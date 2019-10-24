@@ -1,4 +1,4 @@
-__version__ = '1.1.0'
+__version__ = '1.1.0+dd.2'
 
 from consul.std import Consul
 
