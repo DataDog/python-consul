@@ -272,6 +272,7 @@ class Consul(object):
         verify=True,
         cert=None,
         check_pid=False,
+        timeout=None
     ):
         """
         *token* is an optional `ACL token`_. If supplied it will be used by
@@ -292,10 +293,11 @@ class Consul(object):
         *cert* client side certificates for HTTPS requests
 
         *check_pid* is whether to renew the requests.session if the pid has changed
+
+        *timeout* is the default timeout set on the underlying http client
         """
 
         # TODO: Status
-
         if os.getenv("CONSUL_HTTP_ADDR"):
             try:
                 host, port = os.getenv("CONSUL_HTTP_ADDR").split(":")
@@ -309,7 +311,7 @@ class Consul(object):
         if os.getenv("CONSUL_HTTP_SSL_VERIFY") is not None:
             verify = os.getenv("CONSUL_HTTP_SSL_VERIFY") == "true"
 
-        self.http = self.connect(host, port, scheme, verify, cert, check_pid=check_pid)
+        self.http = self.connect(host, port, scheme, verify, cert, check_pid=check_pid, timeout=timeout)
         self.token = os.getenv("CONSUL_HTTP_TOKEN", token)
         self.scheme = scheme
         self.dc = dc

@@ -11,6 +11,7 @@ __all__ = ['Consul']
 
 class HTTPClient(base.HTTPClient):
     def __init__(self, *args, **kwargs):
+        self.timeout = kwargs.pop('timeout', None)
         super(HTTPClient, self).__init__(*args, **kwargs)
         self.client = httpclient.AsyncHTTPClient()
 
@@ -28,30 +29,40 @@ class HTTPClient(base.HTTPClient):
             response = e.response
         raise gen.Return(callback(self.response(response)))
 
-    def get(self, callback, path, params=None):
+    def get(self, callback, path, params=None, timeout=None):
         uri = self.uri(path, params)
-        return self._request(callback, uri)
+        timeout = timeout if timeout is not None else self.timeout
+        request = httpclient.HTTPRequest(uri, method='GET',
+                                         validate_cert=self.verify, 
+                                         request_timeout=timeout)
+        return self._request(callback, request)
 
-    def put(self, callback, path, params=None, data=''):
+    def put(self, callback, path, params=None, data='', timeout=None):
         uri = self.uri(path, params)
+        timeout = timeout if timeout is not None else self.timeout
         request = httpclient.HTTPRequest(uri, method='PUT',
                                          body='' if data is None else data,
-                                         validate_cert=self.verify)
+                                         validate_cert=self.verify, 
+                                         request_timeout=timeout)
         return self._request(callback, request)
 
-    def delete(self, callback, path, params=None):
+    def delete(self, callback, path, params=None, timeout=None):
         uri = self.uri(path, params)
+        timeout = timeout if timeout is not None else self.timeout
         request = httpclient.HTTPRequest(uri, method='DELETE',
-                                         validate_cert=self.verify)
+                                         validate_cert=self.verify, 
+                                         request_timeout=timeout)
         return self._request(callback, request)
 
-    def post(self, callback, path, params=None, data=''):
+    def post(self, callback, path, params=None, data='', timeout=None):
         uri = self.uri(path, params)
+        timeout = timeout if timeout is not None else self.timeout
         request = httpclient.HTTPRequest(uri, method='POST', body=data,
-                                         validate_cert=self.verify)
+                                         validate_cert=self.verify, 
+                                         request_timeout=timeout)
         return self._request(callback, request)
 
 
 class Consul(base.Consul):
-    def connect(self, host, port, scheme, verify=True, cert=None):
-        return HTTPClient(host, port, scheme, verify=verify, cert=cert)
+    def connect(self, host, port, scheme, verify=True, cert=None, timeout=None, check_pid=None):
+        return HTTPClient(host, port, scheme, verify=verify, cert=cert, timeout=None)

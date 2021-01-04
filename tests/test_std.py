@@ -19,6 +19,9 @@ class TestHTTPClient(object):
         assert http.uri('/v1/kv') == 'http://127.0.0.1:8500/v1/kv'
         assert http.uri('/v1/kv', params={'index': 1}) == \
             'http://127.0.0.1:8500/v1/kv?index=1'
+    def test_timeout(self):
+        http = consul.std.HTTPClient(timeout=10)
+        assert http.timeout == 10
 
 
 class TestConsul(object):
