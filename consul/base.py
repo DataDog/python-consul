@@ -432,8 +432,10 @@ class Consul(object):
             if index:
                 params.append(("index", index))
                 if wait:
-                    params["wait"] = wait
-            return self.agent.http.get(CB.json(index=True, decode="Payload"), "/v1/event/list", params=params)
+                    params.append(('wait', wait))
+            return self.agent.http.get(
+                CB.json(index=True, decode='Payload'),
+                '/v1/event/list', params=params)
 
     class KV(object):
         """
@@ -748,7 +750,8 @@ class Consul(object):
             if wan:
                 params.append(("wan", 1))
 
-            return self.agent.http.get(CB.bool(), "/v1/agent/join/%s" % address, params=params)
+            return self.agent.http.put(
+                CB.bool(), '/v1/agent/join/%s' % address, params=params)
 
         def force_leave(self, node):
             """
@@ -762,29 +765,30 @@ class Consul(object):
             *node* is the node to change state for.
             """
 
-            return self.agent.http.get(CB.bool(), "/v1/agent/force-leave/%s" % node)
+            return self.agent.http.put(
+                CB.bool(), '/v1/agent/force-leave/%s' % node)
 
         class Service(object):
             def __init__(self, agent):
                 self.agent = agent
 
             def register(
-                self,
-                name,
-                service_id=None,
-                address=None,
-                port=None,
-                tags=None,
-                check=None,
-                token=None,
-                # *deprecated* use check parameter
-                script=None,
-                interval=None,
-                ttl=None,
-                http=None,
-                timeout=None,
-                enable_tag_override=False,
-            ):
+                    self,
+                    name,
+                    service_id=None,
+                    address=None,
+                    port=None,
+                    tags=None,
+                    check=None,
+                    token=None,
+                    meta=None,
+                    # *deprecated* use check parameter
+                    script=None,
+                    interval=None,
+                    ttl=None,
+                    http=None,
+                    timeout=None,
+                    enable_tag_override=False):
                 """
                 Add a new service to the local agent. There is more
                 documentation on services
@@ -806,6 +810,9 @@ class Consul(object):
                 *token* is an optional `ACL token`_ to apply to this request.
                 Note this call will return successful even if the token doesn't
                 have permissions to register this service.
+
+                *meta* specifies arbitrary KV metadata linked to the service
+                formatted as {k1:v1, k2:v2}.
 
                 *script*, *interval*, *ttl*, *http*, and *timeout* arguments
                 are deprecated. use *check* instead.
@@ -831,8 +838,9 @@ class Consul(object):
                 if port:
                     payload["port"] = port
                 if tags:
-                    payload["tags"] = tags
-
+                    payload['tags'] = tags
+                if meta:
+                    payload['meta'] = meta
                 if check:
                     payload["check"] = check
 
@@ -1001,7 +1009,14 @@ class Consul(object):
         def __init__(self, agent):
             self.agent = agent
 
-        def register(self, node, address, service=None, check=None, dc=None, token=None):
+        def register(self,
+                     node,
+                     address,
+                     service=None,
+                     check=None,
+                     dc=None,
+                     token=None,
+                     node_meta=None):
             """
             A low level mechanism for directly registering or updating entries
             in the catalog. It is usually recommended to use
@@ -1051,6 +1066,9 @@ class Consul(object):
 
             *token* is an optional `ACL token`_ to apply to this request.
 
+            *node_meta* is an optional meta data used for filtering, a
+            dictionary formatted as {k1:v1, k2:v2}.
+
             This manipulates the health check entry, but does not setup a
             script or TTL to actually update the status. The full documentation
             is `here <https://consul.io/docs/agent/http.html#catalog>`_.
@@ -1068,11 +1086,24 @@ class Consul(object):
                 data["check"] = check
             token = token or self.agent.token
             if token:
-                data["WriteRequest"] = {"Token": token}
-                params.append(("token", token))
-            return self.agent.http.put(CB.bool(), "/v1/catalog/register", data=json.dumps(data), params=params)
+                data['WriteRequest'] = {'Token': token}
+                params.append(('token', token))
+            if node_meta:
+                for nodemeta_name, nodemeta_value in node_meta.items():
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.put(
+                CB.bool(),
+                '/v1/catalog/register',
+                data=json.dumps(data),
+                params=params)
 
-        def deregister(self, node, service_id=None, check_id=None, dc=None, token=None):
+        def deregister(self,
+                       node,
+                       service_id=None,
+                       check_id=None,
+                       dc=None,
+                       token=None):
             """
             A low level mechanism for directly removing entries in the catalog.
             It is usually recommended to use the agent APIs, as they are
@@ -1164,9 +1195,10 @@ class Consul(object):
                 params.append((consistency, "1"))
             if node_meta:
                 for nodemeta_name, nodemeta_value in node_meta.items():
-                    params.append(("node-meta", "{}:{}".format(nodemeta_name, nodemeta_value)))
-
-            return self.agent.http.get(CB.json(index=True), "/v1/catalog/nodes", params=params)
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True), '/v1/catalog/nodes', params=params)
 
         def services(self, index=None, wait=None, consistency=None, dc=None, token=None, node_meta=None):
             """
@@ -1220,9 +1252,10 @@ class Consul(object):
                 params.append((consistency, "1"))
             if node_meta:
                 for nodemeta_name, nodemeta_value in node_meta.items():
-                    params.append(("node-meta", "{}:{}".format(nodemeta_name, nodemeta_value)))
-
-            return self.agent.http.get(CB.json(index=True), "/v1/catalog/services", params=params)
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True), '/v1/catalog/services', params=params)
 
         def node(self, node, index=None, wait=None, consistency=None, dc=None, token=None):
             """
@@ -1280,13 +1313,23 @@ class Consul(object):
                     params.append(("wait", wait))
             token = token or self.agent.token
             if token:
-                params["token"] = token
+                params.append(('token', token))
             consistency = consistency or self.agent.consistency
             if consistency in ("consistent", "stale"):
                 params.append((consistency, "1"))
             return self.agent.http.get(CB.json(index=True), "/v1/catalog/node/%s" % node, params=params)
 
-        def service(self, service, index=None, wait=None, tag=None, consistency=None, dc=None, near=None, token=None):
+        def service(
+                self,
+                service,
+                index=None,
+                wait=None,
+                tag=None,
+                consistency=None,
+                dc=None,
+                near=None,
+                token=None,
+                node_meta=None):
             """
             Returns a tuple of (*index*, *nodes*) of the nodes providing
             *service* in the *dc* datacenter. *dc* defaults to the current
@@ -1310,6 +1353,9 @@ class Consul(object):
             was configured with.
 
             *token* is an optional `ACL token`_ to apply to this request.
+
+            *node_meta* is an optional meta data used for filtering, a
+            dictionary formatted as {k1:v1, k2:v2}.
 
             The response looks like this::
 
@@ -1340,9 +1386,16 @@ class Consul(object):
             if token:
                 params.append(("token", token))
             consistency = consistency or self.agent.consistency
-            if consistency in ("consistent", "stale"):
-                params.append((consistency, "1"))
-            return self.agent.http.get(CB.json(index=True), "/v1/catalog/service/%s" % service, params=params)
+            if consistency in ('consistent', 'stale'):
+                params.append((consistency, '1'))
+            if node_meta:
+                for nodemeta_name, nodemeta_value in node_meta.items():
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True),
+                '/v1/catalog/service/%s' % service,
+                params=params)
 
     class Health(object):
         # TODO: All of the health endpoints support all consistency modes
@@ -1399,9 +1452,12 @@ class Consul(object):
                 params.append(("token", token))
             if node_meta:
                 for nodemeta_name, nodemeta_value in node_meta.items():
-                    params.append(("node-meta", "{}:{}".format(nodemeta_name, nodemeta_value)))
-
-            return self.agent.http.get(CB.json(index=True), "/v1/health/service/%s" % service, params=params)
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True),
+                '/v1/health/service/%s' % service,
+                params=params)
 
         def checks(self, service, index=None, wait=None, dc=None, near=None, token=None, node_meta=None):
             """
@@ -1443,11 +1499,21 @@ class Consul(object):
                 params.append(("token", token))
             if node_meta:
                 for nodemeta_name, nodemeta_value in node_meta.items():
-                    params.append(("node-meta", "{}:{}".format(nodemeta_name, nodemeta_value)))
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True),
+                '/v1/health/checks/%s' % service,
+                params=params)
 
-            return self.agent.http.get(CB.json(index=True), "/v1/health/checks/%s" % service, params=params)
-
-        def state(self, name, index=None, wait=None, dc=None, near=None, token=None, node_meta=None):
+        def state(self,
+                  name,
+                  index=None,
+                  wait=None,
+                  dc=None,
+                  near=None,
+                  token=None,
+                  node_meta=None):
             """
             Returns a tuple of (*index*, *nodes*)
 
@@ -1493,8 +1559,12 @@ class Consul(object):
                 params.append(("token", token))
             if node_meta:
                 for nodemeta_name, nodemeta_value in node_meta.items():
-                    params.append(("node-meta", "{}:{}".format(nodemeta_name, nodemeta_value)))
-            return self.agent.http.get(CB.json(index=True), "/v1/health/state/%s" % name, params=params)
+                    params.append(('node-meta', '{0}:{1}'.
+                                   format(nodemeta_name, nodemeta_value)))
+            return self.agent.http.get(
+                CB.json(index=True),
+                '/v1/health/state/%s' % name,
+                params=params)
 
         def node(self, node, index=None, wait=None, dc=None, token=None):
             """
