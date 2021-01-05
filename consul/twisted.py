@@ -33,6 +33,7 @@ class InsecureContextFactory(ClientContextFactory):
 
 class HTTPClient(base.HTTPClient):
     def __init__(self, contextFactory, *args, **kwargs):
+        self.timeout = kwargs.pop('timeout', None)
         super(HTTPClient, self).__init__(*args, **kwargs)
         agent_kwargs = dict(
             reactor=reactor, pool=HTTPConnectionPool(reactor))
@@ -79,6 +80,8 @@ class HTTPClient(base.HTTPClient):
             data = kwargs.pop('data')
             kwargs['data'] = data.encode(encoding='utf-8') \
                 if hasattr(data, 'encode') else b(data)
+        if self.timeout is not None and 'timeout' not in kwargs:
+            kwargs['timeout'] = timeout
 
         try:
             response = yield self.client.request(method, url, **kwargs)
@@ -99,27 +102,27 @@ class HTTPClient(base.HTTPClient):
                 'Request incomplete: {} {}'.format(method.upper(), url))
 
     @inlineCallbacks
-    def get(self, callback, path, params=None):
+    def get(self, callback, path, params=None, timeout=None):
         uri = self.uri(path, params)
-        response = yield self.request(callback, 'get', uri, params=params)
+        response = yield self.request(callback, 'get', uri, params=params, timeout=timeout)
         returnValue(response)
 
     @inlineCallbacks
-    def put(self, callback, path, params=None, data=''):
+    def put(self, callback, path, params=None, data='', timeout=None):
         uri = self.uri(path, params)
-        response = yield self.request(callback, 'put', uri, data=data)
+        response = yield self.request(callback, 'put', uri, data=data, timeout=timeout)
         returnValue(response)
 
     @inlineCallbacks
-    def post(self, callback, path, params=None, data=''):
+    def post(self, callback, path, params=None, data='', timeout=None):
         uri = self.uri(path, params)
-        response = yield self.request(callback, 'post', uri, data=data)
+        response = yield self.request(callback, 'post', uri, data=data, timeout=timeout)
         returnValue(response)
 
     @inlineCallbacks
-    def delete(self, callback, path, params=None):
+    def delete(self, callback, path, params=None, timeout=None):
         uri = self.uri(path, params)
-        response = yield self.request(callback, 'delete', uri, params=params)
+        response = yield self.request(callback, 'delete', uri, params=params, timeout=timeout)
         returnValue(response)
 
 
